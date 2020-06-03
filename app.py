@@ -65,7 +65,7 @@ app.title="Talapas SU Calc"
 # content = html.Div(id="page-content", style=CONTENT_STYLE)
 
 # app layout ----------------------------------------------------------------------
-app.layout = html.Div(children=[
+app.layout = html.Div([
     # title
     html.H1("UO Talapas Service Unit Calculator", style={"text-align": "center"}),
     
@@ -153,11 +153,8 @@ app.layout = html.Div(children=[
     html.Div(id='output_su', style={"width": "25%", "float": "left"}),
     html.Br(),
     # GRAPH OVER TIME
-    # html.Div(
-    #     [html.H3('This is my graph')],
-    #     dcc.Graph(id='output_graph')
-    # ),
-    # html.Br(),
+    dcc.Graph(id='output_graph'),
+    html.Br(),
     # TABLE OVER TIME
     ]
 )
@@ -217,31 +214,31 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, frequency):
     # return("estimated cost: {}".format(est_cost))
 
 # plot graph of job over time and frequency
-# @app.callback(
-#     Output('output_graph', 'children'),
-#     [Input(component_id='node_type', component_property='value'),
-#     Input(component_id='node_count', component_property='value'),
-#     Input(component_id='input_cpu', component_property='value'),
-#     Input(component_id='input_gpu', component_property='value'),
-#     Input(component_id='input_ram', component_property='value'),
-#     Input(component_id='job_duration', component_property='value'),
-#     Input(component_id='job_frequency', component_property='value'),
-#     Input(component_id='job_time', component_property='value')])
-# def calc_cost_time(node_type, node_count, cpu, gpu, ram, duration, frequency, over_time):
-#     if over_time == None:
-#         return(None)
-#     if over_time == "daily":
-#         print('it will cost {} dollars per day '.format(cost) )
-#     if over_time == "weekly":
-#         print("it will cost {} dollars per week ".format(cost * 7) )
-#     if over_time == "monthly":
-#         print("it will cost {} dollars per month (30 days) ".format(cost * 30))
-#     if over_time == "bi_annual":
-#         print("it will cost {} dollars per year".format(cost * 2))
-#     if over_time == "quarterly":
-#         print("it will cost {} dollars per year ".format(cost * 4))
-#     if over_time == "annually":
-#         print("it will cost {} dollars per year ".format(cost))
+@app.callback(
+    Output('output_graph', 'figure'),
+    [Input(component_id='node_type', component_property='value'),
+    Input(component_id='node_count', component_property='value'),
+    Input(component_id='input_cpu', component_property='value'),
+    Input(component_id='input_gpu', component_property='value'),
+    Input(component_id='input_ram', component_property='value'),
+    Input(component_id='job_duration', component_property='value'),
+    Input(component_id='job_frequency', component_property='value'),
+    Input(component_id='job_time', component_property='value')])
+def calc_cost_time(node_type, node_count, cpu, gpu, ram, duration, frequency, over_time):
+    if over_time == None:
+        return(None)
+    if over_time == "daily":
+        return('it will cost {} dollars per day '.format(10) )
+    if over_time == "weekly":
+        return("it will cost {} dollars per week ".format(10 * 7) )
+    if over_time == "monthly":
+        return("it will cost {} dollars per month (30 days) ".format(10 * 30))
+    if over_time == "bi_annual":
+        return("it will cost {} dollars per year".format(10 * 2))
+    if over_time == "quarterly":
+        return("it will cost {} dollars per year ".format(10 * 4))
+    if over_time == "annually":
+        return("it will cost {} dollars per year ".format(10))
 
 # unit tests ----------------------------------------------------------------------
 
