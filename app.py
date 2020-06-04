@@ -2,12 +2,14 @@ import os
 import sys
 import re
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
-# import plotly.graph_objs as go
-# import plotly_express as px
+import plotly.graph_objs as go
+import itertools
+import pandas as pd
 
 # Initiate the app ----------------------------------------------------------------
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -38,9 +40,8 @@ CONTENT_STYLE = {
 
 sidebar = html.Div(
     [
-        html.H3("Compute Parameters"),
+        html.H4("Compute Parameters"),
         html.Hr(),
-        html.P("Allocate your resources", className="lead"),
         dbc.Nav(
             [html.P("Select type of node"),
             dbc.Select(
@@ -91,8 +92,12 @@ sidebar = html.Div(
                     {"label": "Service Units", "value": "units_su"},
                     {"label": "Dollars", "value": "units_dollars"}
                 ]),
-            dbc.Label("View effect of frequency and jobs over time"),
-            dbc.Button("View", color = "primary")
+            html.Hr(),
+            dbc.Label("View effect of frequency and time"),
+            dbc.Button(
+                "View",
+                id="input_view",
+                color = "primary")
             ],
             vertical=True,
             pills=True,
@@ -102,6 +107,9 @@ sidebar = html.Div(
 )
 
 content = html.Div(id="page-content", style=CONTENT_STYLE)
+
+df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/solar.csv')
+
 
 # app layout ----------------------------------------------------------------------
 app.layout = html.Div([
@@ -123,19 +131,21 @@ app.layout = html.Div([
     ),
 
     # graph cost over time
-    # dbc.Row(
-    #     dbc.Col(
-    #         dcc.Slider(
-    #             id='slider_days',
-    #             min=0,
-    #             max=1000,
-    #             step=1,
-    #             value=0),
-    #         html.Div(id='slider_days_output')))
+    dbc.Row(
+        dbc.Col(
+            dcc.Graph(id='output_graph'),
+            width={"size": 7, "offset": 3}
+    )),
+
+    # table of cost over time
+    dbc.Row(
+        dbc.Col(
+            # html.H1("hello world", style={"white-space": "nowrap"}), 
+            dash_table.DataTable(id='output_table'),
+            width={"size": 7, "offset": 3}
+        ))
     ]
 )
-
-# how to include horizontal and vertical sliders. Then work out how to calculate the while changing one variable at a time.
 
 # tips:
 # dbc.Alert() children is an empty list right now. Once it receives all the information then the callback will add the price to the dbc.Alert children.
@@ -144,8 +154,45 @@ app.layout = html.Div([
 su_dollar = 0.025 # number of dollars per service unit
 # note: total gpu units in a node is hard-coded as 4 below.
 
+# define top resource used
 def top_resource(alloc_CPU, cpu_denominator, alloc_GPU, gpu_denominator, alloc_RAM, ram_denominator):
     return( max([alloc_CPU / cpu_denominator, alloc_GPU / gpu_denominator, alloc_RAM / ram_denominator]) )
+
+def cost_graph(table):
+    fig = go.Figure(data=[go.Mesh3d(z=table['Cost'], 
+                                x=table['Number of Days'], 
+                                y = table['Frequency'], 
+                                opacity=1, 
+                                intensity=table['Cost'], 
+                                colorscale="Inferno")])
+    fig.update_layout(
+        title="Job cost over time and frequency",
+        width=700, height=700,
+        scene = dict(
+        xaxis_title="Number of Days (X)",
+        yaxis_title="Frequency (Y)",
+        zaxis_title="Cost (Z)"
+    ))
+
+# plot_mesh3d(wat)
+
+def cost_table(est_cost, max_days = 31, max_freq = 100, units = "units_su"):
+    """ 
+    Input: cost of job
+    Output: a plot of job cost over time (x) and frequency (y)
+    """
+    df_surface = pd.DataFrame(columns=['Number of Days', 'Frequency'])
+    for i in itertools.product(pd.Series(range(1, max_days)), pd.Series(range(1, max_freq))):
+        temp_row = pd.Series(list(i), index=['Number of Days', 'Frequency'])
+        df_surface = df_surface.append(temp_row, ignore_index=True)
+    if units == "units_su":
+        df_surface = df_surface.assign(Cost = df_surface['Number of Days'] * df_surface['Frequency'] * est_cost)
+    elif units == "units_dollars":
+        df_surface = df_surface.assign(Cost = df_surface['Number of Days'] * df_surface['Frequency'] * est_cost * su_dollar)
+    else:
+        print("incorrect unit type. Must be 'su' or 'dollars'. ")
+    # surface_plot = plot_mesh3d(df_surface)
+    return(df_surface)
 
 # Service Units Equation = SUM over allocated nodes(max(AllocCPU/TotCPU, AllocRAM/TotRAM, AllocGRES/TotGRES) * NTF) * 28 Service Units/hour * job duration in hours
 
@@ -157,20 +204,27 @@ def top_resource(alloc_CPU, cpu_denominator, alloc_GPU, gpu_denominator, alloc_R
 # we output 2 things: calculated SU and True that toggles dbc.Alert() to show up when all fields are selected.
 
 @app.callback(
-    [Output(component_id="output_su", component_property='children'),
-    Output("output_su", "is_open")],
+    [Output("output_su", 'children'),
+    Output("output_su", "is_open"),
+    Output("output_table", "data"),
+    Output("output_table", "columns")],
     [Input('node_type', 'value'),
     Input('node_count', 'value'),
     Input('input_cpu', 'value'),
     Input('input_gpu', 'value'),
     Input('input_ram', 'value'),
     Input('job_duration', 'value'),
-    Input('input_units', 'value')]
+    Input('input_units', 'value'), 
+    Input('input_view', 'n_clicks')]
 )
-def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units):
+def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
+    # do not return anything if no user input
     if node_type == None:
-        return(None, False)
+        table_data = [] # empty table
+        table_columns = []
+        return(None, False, table_data, table_columns)
         pass
+    # adjust NTF, total RAM, total CPU by node type
     if node_type == 'std':
         node_factor = 1
         tot_cpu = 28
@@ -184,24 +238,32 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units):
         tot_cpu = 56
         tot_ram = 1024
     # job_setup = "current setup = {} node type + {} number of nodes + {} number of cpu # + {} number of ram + {} hrs duration of job + {} total cpu + {} total ram".format(node_type, node_count, cpu, ram, duration, tot_cpu, tot_ram)
+    # calculate service units
     max_resource = top_resource(
         alloc_CPU = cpu, cpu_denominator = tot_cpu,
         alloc_GPU = gpu, gpu_denominator = 4,
         alloc_RAM = ram, ram_denominator = tot_ram)
     su = ( (node_count * (max_resource * node_factor)) * 28 * duration )
+    # adjust output msg by units selected
     if units == "units_su":
-        return("estimated service units: {}".format(su), True)
-    elif units == "units_dollars":
-        return("estimated service units: {}".format(su * su_dollar), True)
+        est_cost  = "estimated service units: {}".format(su)
+    if units == "units_dollars":
+        est_cost = "estimated cost in dollars: {}".format(su * su_dollar)
+    # plot the table upon button click
+    if n_click == None or n_click % 2 == 0:
+        table_data = [] # empty table
+        table_columns = []
+    elif (n_click % 2 == 1):
+        tbl = cost_table(su, units = units)
+        table_data = tbl.to_dict('records')
+        table_columns = [{"name": i, "id": i} for i in tbl.columns]
+    return(est_cost, True, table_data, table_columns)
 
-# plot graph of job over time and frequency
-# @app.callback(
-#     Output("")
-# )
-
-
+# if you want an empty table, just return an empty list [] for output table's (data and columns) component id.
 
 # unit tests ----------------------------------------------------------------------
+
+# unit test incompatible with public deployment, but still passes for personal deploy to browser.
 
 # Example 1 (CPU driven SU): User A submits a job that is allocated 14 cores and 32 GB of RAM on one standard compute node.  Each compute node has a total of 28 cores and 128GB of RAM.  The job runs for 10 hours.  The job would have consumed
 # assert float( re.findall("[\d.]+", calc_cost('std', 1, 14, 0, 32, 10, "units_su") )[0]) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
@@ -224,4 +286,24 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units):
 # run app --------------------------------------------------------------------------
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=True, use_reloader=False)
+
+# deployment resources -------------------------------------------------------------
+
+# sign up for account at heroku.
+
+# installing heroku: https://dev.to/twiddlewakka/heroku-cli-on-wsl-26fp
+    # curl https://cli-assets.heroku.com/install.sh | sh
+    # `heroku apps` to log in. 
+
+
+# configure project, env, and hosting on heroku: https://stackoverflow.com/questions/47949173/deploy-a-python-dash-app-to-heroku-using-conda-environments-instead-of-virtua
+
+# lingering questions --------------------------------------------------------------
+# how do i chain callbacks together? I want callback2 to retrieve the output of callback1 so I can modularize each component of the app.
+# in bootstrap, how do I vertical offset?
+# how can i learn enough CSS to build an app that is viewable on desktop and mobile?
+# how do i not show a plot by default, and only display it upon the click of a button?
+# how do i include a good looking navbar with bootstrap?
+# how do i incorporate 2 sliders into a graph?
+# how do i make multi-page app?
