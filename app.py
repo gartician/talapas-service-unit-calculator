@@ -150,13 +150,13 @@ app.layout = html.Div([
         dbc.Col(
             dash_table.DataTable(
                 id='output_table', 
-                style_table = {"height": 500, "overflowY": "auto", "width": "100%"}, 
+                style_table = {"height": 500, "overflowX": "scroll", "overflowY": "auto", "width": 900}, 
                 style_as_list_view = True,
                 style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'},
                 style_cell_conditional = [
-                    {'if': {'column_id': 'Cost'}, 'width': 333},
-                    {'if': {'column_id': 'Frequency'}, 'width': 333},
-                    {'if': {'column_id': 'Number of Days'}, 'width': 333}]),
+                    {'if': {'column_id': 'Cost'}, 'width': 300},
+                    {'if': {'column_id': 'Frequency'}, 'width': 300},
+                    {'if': {'column_id': 'Number of Days'}, 'width': 300}]),
             width={"size": 6, "offset": 4}
         ))
     ]
@@ -285,22 +285,22 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
 # unit test incompatible with public deployment, but still passes for personal deploy to browser.
 
 # Example 1 (CPU driven SU): User A submits a job that is allocated 14 cores and 32 GB of RAM on one standard compute node.  Each compute node has a total of 28 cores and 128GB of RAM.  The job runs for 10 hours.  The job would have consumed
-assert float( re.findall("[\d.]+", calc_cost('std', 1, 14, 0, 32, 10, "units_su", 0) )[0]) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
+# assert float( re.findall("[\d.]+", calc_cost('std', 1, 14, 0, 32, 10, "units_su", 0) )[0]) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
 
 # Example 2 (Memory driven SU): User B submits a job that is allocated 7 cores and 128GB of RAM and one GPU on a GPU node. Each GPU node has a total of 28 cores and 256GB of RAM and 4 GPUs.  The job runs for 10 hours. Then the job would have consumed
-assert float( re.findall("[\d.]+", calc_cost('std', 1, 7, 1, 128, 10, "units_su", 0) )[0]) == 280.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
+# assert float( re.findall("[\d.]+", calc_cost('std', 1, 7, 1, 128, 10, "units_su", 0) )[0]) == 280.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
 
 # Example 3 (GPU driven SU): User C submits a job to the GPU partition and that job is allocated 1 core, 16GB of RAM, and 3 GPUs. The nodes in the GPU partition have 28 cpus, 256 GB of RAM, and 4 GPUs. This job runs for 10 hours and will have consumed
-assert float( re.findall("[\d.]+", calc_cost('gpu', 1, 1, 3, 16, 10, "units_su", 0) )[0]) == 420.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
+# assert float( re.findall("[\d.]+", calc_cost('gpu', 1, 1, 3, 16, 10, "units_su", 0) )[0]) == 420.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
 
 # Example 4 (CPU driven SU on Fat nodes): User D submits a job to the fat partition that is allocated 42 of the 56 available cpus and 512GB of memory.  The job finishes in 10 hours and will have consumed
-assert float( re.findall("[\d.]+", calc_cost('fat', 1, 42, 0, 512, 10, "units_su", 0) )[0]) == 1260, "1 fat node using 42 cores and 512 GB RAM for 10 hrs does not equal 1260 service units"
+# assert float( re.findall("[\d.]+", calc_cost('fat', 1, 42, 0, 512, 10, "units_su", 0) )[0]) == 1260, "1 fat node using 42 cores and 512 GB RAM for 10 hrs does not equal 1260 service units"
 
 # Example 5 (Memory driven SU on Fat nodes): User E submits a job to the fat partition that is allocated 4 of the 56 available cpus and 2TB (2048GB) of memory.  The job finishes in 10 hours and will have consumed
-assert float( re.findall("[\d.]+", calc_cost('fat', 1, 4, 0, 2048, 10, "units_su", 0) )[0]) == 3360.0, "1 fat node using 4 cores and 2048 GB RAM for 10 hrs does not equal 3360 service units"
+# assert float( re.findall("[\d.]+", calc_cost('fat', 1, 4, 0, 2048, 10, "units_su", 0) )[0]) == 3360.0, "1 fat node using 4 cores and 2048 GB RAM for 10 hrs does not equal 3360 service units"
 
 # Example 6 (Multiple standard nodes): User F submits a job that is allocated 16 standard nodes (28 cores and 128 GB of RAM per node, totaling 448 cores and 2048GB of memory).  The job runs for 10 hours and will have consumed
-assert float( re.findall("[\d.]+", calc_cost('std', 16, 28, 0, 128, 10, "units_su", 0) )[0]) == 4480.0, "16 std nodes using 28 cores and 128 GB RAM for 10 hrs does not equal 4480 service units"
+# assert float( re.findall("[\d.]+", calc_cost('std', 16, 28, 0, 128, 10, "units_su", 0) )[0]) == 4480.0, "16 std nodes using 28 cores and 128 GB RAM for 10 hrs does not equal 4480 service units"
 
 # run app --------------------------------------------------------------------------
 
@@ -314,7 +314,6 @@ if __name__ == '__main__':
 # installing heroku: https://dev.to/twiddlewakka/heroku-cli-on-wsl-26fp
     # curl https://cli-assets.heroku.com/install.sh | sh
     # `heroku apps` to log in. 
-
 
 # configure project, env, and hosting on heroku: https://stackoverflow.com/questions/47949173/deploy-a-python-dash-app-to-heroku-using-conda-environments-instead-of-virtua
 
