@@ -13,12 +13,11 @@ from dash.dependencies import Input, Output
 from dash_table.Format import Format, Scheme, Sign, Symbol
 
 # Initiate the app ----------------------------------------------------------------
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
 server = app.server
-app.title="Talapas SU Calc"
+app.title="Talapas Calculator"
 
-# bootstrap components ------------------------------------------------------------
+# app components ------------------------------------------------------------------
 
 # the style arguments for the sidebar. We use position:fixed and a fixed width
 SIDEBAR_STYLE = {
@@ -43,49 +42,56 @@ sidebar = html.Div(
     [
         html.H4("Compute Parameters"),
         html.Hr(),
-        dbc.Nav(
-            [html.P("Select type of node"),
-            dbc.Select(
-                id="node_type",
-                options=[
-                    {'label': 'Standard', 'value': 'std'},
-                    {'label': 'GPU', 'value': 'gpu'},
-                    {'label': 'High-Memory', 'value': 'fat'}
-                ]),
-            html.Br(),
-            html.P("Number of nodes"),
-            dbc.Input(
-                id="node_count",
-                value=1,
-                type="number",
-                debounce=True),
-            html.P("Number of CPU(s)"),
-            dbc.Input(
-                id="input_cpu",
-                value=1,
-                type="number",
-                debounce=True),
-            html.P("Number of GPU(s)"),
-            dbc.Input(
-                id="input_gpu",
-                value=0,
-                type="number",
-                debounce=True),
-            html.P("Amount of RAM (GB)"),
-            dbc.Input(
-                id="input_ram",
-                value=4,
-                type="number",
-                debounce=True),
-            html.P("Job duration (hours)"),
-            dbc.Input(
-                id="job_duration",
-                value=2.5,
-                type="number",
-                debounce=True),
-            html.Hr(),
+        dbc.Nav([
+            dbc.FormGroup([
+                dbc.Label("Select type of node"),
+                dbc.Select(
+                    id="node_type",
+                    options=[
+                        {'label': 'Standard', 'value': 'std'},
+                        {'label': 'GPU', 'value': 'gpu'},
+                        {'label': 'High-Memory', 'value': 'fat'}
+                        ])]),
+            dbc.FormGroup([
+                dbc.Label("Number of nodes"),
+                dbc.Input(
+                    id="node_count",
+                    value=1,
+                    type="number",
+                    debounce=True,
+                    min=0)]),
+            dbc.FormGroup([
+                dbc.Label("Number of CPU(s)"),
+                dbc.Input(
+                    id="input_cpu",
+                    value=1,
+                    type="number",
+                    debounce=True,
+                    min=0)]),
+            dbc.FormGroup([
+                dbc.Label("Number of GPU(s)"),
+                dbc.Input(
+                    id="input_gpu",
+                    value=0,
+                    type="number",
+                    debounce=True,
+                    min=0)]),
+            dbc.FormGroup([
+                dbc.Label("Amount of RAM (GB)"),
+                dbc.Input(
+                    id="input_ram",
+                    value=4,
+                    type="number",
+                    debounce=True,
+                    min=0)]),
+            dbc.FormGroup([
+                dbc.Label("Job duration (hours)"),
+                dbc.Input(
+                    id="job_duration",
+                    value=2.5,
+                    type="number",
+                    debounce=True)]),
             dbc.Label("Return results in units of SU or dollars."),
-            dbc.Label("Rate = $0.025 per SU"),
             dbc.RadioItems(
                 id="input_units",
                 value="units_dollars",
@@ -94,7 +100,7 @@ sidebar = html.Div(
                     {"label": "Dollars", "value": "units_dollars"}
                 ]),
             html.Hr(),
-            dbc.Label("View effect of frequency and time"),
+            dbc.Label("View effects of frequency and time"),
             dbc.Button(
                 "View (wait 10 seconds)",
                 id="input_view",
@@ -106,8 +112,7 @@ sidebar = html.Div(
                 color="primary",
                 href="https://www.google.com")
             ],
-            vertical=True,
-            pills=True,
+            vertical=True, pills=True,
         ),
     ],
     style=SIDEBAR_STYLE,
@@ -155,7 +160,7 @@ app.layout = html.Div([
                 style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'},
                 style_cell_conditional = [
                     {'if': {'column_id': 'Cost'}, 'width': 300},
-                    {'if': {'column_id': 'Frequency'}, 'width': 300},
+                    {'if': {'column_id': 'Total Number of Jobs'}, 'width': 300},
                     {'if': {'column_id': 'Number of Days'}, 'width': 300}]),
             width={"size": 6, "offset": 4}
         ))
@@ -182,14 +187,14 @@ def cost_table(est_cost, max_days = 32, max_freq = 101, units = "units_su"):
     Input: cost of job
     Output: a plot of job cost over time (x) and frequency (y)
     """
-    df_surface = pd.DataFrame(columns=['Number of Days', 'Frequency'])
+    df_surface = pd.DataFrame(columns=['Number of Days', 'Total Number of Jobs'])
     for i in itertools.product(pd.Series(range(1, max_days)), pd.Series(range(1, max_freq))):
-        temp_row = pd.Series(list(i), index=['Number of Days', 'Frequency'])
+        temp_row = pd.Series(list(i), index=['Number of Days', 'Total Number of Jobs'])
         df_surface = df_surface.append(temp_row, ignore_index=True)
     if units == "units_su":
-        df_surface = df_surface.assign(Cost = df_surface['Number of Days'] * df_surface['Frequency'] * est_cost)
+        df_surface = df_surface.assign(Cost = df_surface['Number of Days'] * df_surface['Total Number of Jobs'] * est_cost)
     elif units == "units_dollars":
-        df_surface = df_surface.assign(Cost = df_surface['Number of Days'] * df_surface['Frequency'] * est_cost * su_dollar)
+        df_surface = df_surface.assign(Cost = df_surface['Number of Days'] * df_surface['Total Number of Jobs'] * est_cost * su_dollar)
     else:
         print("incorrect unit type. Must be 'units_su' or 'units_dollars'. ")
     return(df_surface)
@@ -265,7 +270,7 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
         fig = go.Figure(
             data=[go.Mesh3d(z=tbl['Cost'], 
             x=tbl['Number of Days'], 
-            y = tbl['Frequency'], 
+            y = tbl['Total Number of Jobs'], 
             opacity=1, 
             intensity=tbl['Cost'], 
             colorscale="Inferno")])
@@ -273,7 +278,7 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
             title="Job cost over time and frequency",
             scene = dict(
             xaxis_title="Number of Days (X)",
-            yaxis_title="Frequency (Y)",
+            yaxis_title="Total Number of Jobs (Y)",
             zaxis_title="Cost (Z)"),
             width=1000, height=800)
     return(est_cost, True, table_data, table_columns, fig)
