@@ -96,7 +96,7 @@ sidebar = html.Div(
             html.Hr(),
             dbc.Label("View effect of frequency and time"),
             dbc.Button(
-                "View (wait 8 seconds)",
+                "View (wait 10 seconds)",
                 id="input_view",
                 color = "primary"),
             html.Hr(),
