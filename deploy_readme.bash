@@ -6,8 +6,8 @@ conda activate talapas-calculator
 
 # create environment
 pip freeze > requirements.txt
-
+heroku create su-calc # name of the app
 git add .
-git commit -m "added more feature and styling."
+git commit -m "added more feature and styling 2"
 git push heroku master
 heroku ps:scale web=1
