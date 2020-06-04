@@ -199,6 +199,33 @@ def cost_table(est_cost, max_days = 32, max_freq = 101, units = "units_su"):
         print("incorrect unit type. Must be 'units_su' or 'units_dollars'. ")
     return(df_surface)
 
+def su_cost(node_type, node_count, cpu, gpu, ram, duration):
+    """
+    Calculates SU but only utilized for unit tests because different conda environments cannot use the app callback function as a standalone function.
+    This is the exact same method used to get to SU calculations, but the output format is much more friendly for unit tests. This fx omits button clicks and dollar units.
+    """
+    if node_type == 'std':
+        node_factor = 1
+        tot_cpu = 28
+        tot_ram = 128
+    if node_type == 'gpu':
+        node_factor = 2
+        tot_cpu = 28
+        tot_ram = 256
+    if node_type == 'fat':
+        node_factor = 6
+        tot_cpu = 56
+        tot_ram = 1024
+    # job_setup = "current setup = {} node type + {} number of nodes + {} number of cpu # + {} number of ram + {} hrs duration of job + {} total cpu + {} total ram".format(node_type, node_count, cpu, ram, duration, tot_cpu, tot_ram)
+    # calculate service units
+    max_resource = top_resource(
+        alloc_CPU = cpu, cpu_denominator = tot_cpu,
+        alloc_GPU = gpu, gpu_denominator = 4,
+        alloc_RAM = ram, ram_denominator = tot_ram)
+    su = ( (node_count * (max_resource * node_factor)) * 28 * duration )
+    return(su)
+
+
 # Service Units Equation = SUM over allocated nodes(max(AllocCPU/TotCPU, AllocRAM/TotRAM, AllocGRES/TotGRES) * NTF) * 28 Service Units/hour * job duration in hours
 
 # app callbacks -------------------------------------------------------------------
@@ -287,25 +314,23 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
 
 # unit tests ----------------------------------------------------------------------
 
-# unit test incompatible with public deployment, but still passes for personal deploy to browser.
-
 # Example 1 (CPU driven SU): User A submits a job that is allocated 14 cores and 32 GB of RAM on one standard compute node.  Each compute node has a total of 28 cores and 128GB of RAM.  The job runs for 10 hours.  The job would have consumed
-# assert float( re.findall("[\d.]+", calc_cost('std', 1, 14, 0, 32, 10, "units_su", 0) )[0]) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
+assert su_cost('std', 1, 14, 0, 32, 10) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
 
 # Example 2 (Memory driven SU): User B submits a job that is allocated 7 cores and 128GB of RAM and one GPU on a GPU node. Each GPU node has a total of 28 cores and 256GB of RAM and 4 GPUs.  The job runs for 10 hours. Then the job would have consumed
-# assert float( re.findall("[\d.]+", calc_cost('std', 1, 7, 1, 128, 10, "units_su", 0) )[0]) == 280.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
+assert su_cost('std', 1, 7, 1, 128, 10) == 280.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
 
 # Example 3 (GPU driven SU): User C submits a job to the GPU partition and that job is allocated 1 core, 16GB of RAM, and 3 GPUs. The nodes in the GPU partition have 28 cpus, 256 GB of RAM, and 4 GPUs. This job runs for 10 hours and will have consumed
-# assert float( re.findall("[\d.]+", calc_cost('gpu', 1, 1, 3, 16, 10, "units_su", 0) )[0]) == 420.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
+assert su_cost('gpu', 1, 1, 3, 16, 10) == 420.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
 
 # Example 4 (CPU driven SU on Fat nodes): User D submits a job to the fat partition that is allocated 42 of the 56 available cpus and 512GB of memory.  The job finishes in 10 hours and will have consumed
-# assert float( re.findall("[\d.]+", calc_cost('fat', 1, 42, 0, 512, 10, "units_su", 0) )[0]) == 1260, "1 fat node using 42 cores and 512 GB RAM for 10 hrs does not equal 1260 service units"
+assert su_cost('fat', 1, 42, 0, 512, 10) == 1260, "1 fat node using 42 cores and 512 GB RAM for 10 hrs does not equal 1260 service units"
 
 # Example 5 (Memory driven SU on Fat nodes): User E submits a job to the fat partition that is allocated 4 of the 56 available cpus and 2TB (2048GB) of memory.  The job finishes in 10 hours and will have consumed
-# assert float( re.findall("[\d.]+", calc_cost('fat', 1, 4, 0, 2048, 10, "units_su", 0) )[0]) == 3360.0, "1 fat node using 4 cores and 2048 GB RAM for 10 hrs does not equal 3360 service units"
+assert su_cost('fat', 1, 4, 0, 2048, 10) == 3360.0, "1 fat node using 4 cores and 2048 GB RAM for 10 hrs does not equal 3360 service units"
 
 # Example 6 (Multiple standard nodes): User F submits a job that is allocated 16 standard nodes (28 cores and 128 GB of RAM per node, totaling 448 cores and 2048GB of memory).  The job runs for 10 hours and will have consumed
-# assert float( re.findall("[\d.]+", calc_cost('std', 16, 28, 0, 128, 10, "units_su", 0) )[0]) == 4480.0, "16 std nodes using 28 cores and 128 GB RAM for 10 hrs does not equal 4480 service units"
+assert su_cost('std', 16, 28, 0, 128, 10) == 4480.0, "16 std nodes using 28 cores and 128 GB RAM for 10 hrs does not equal 4480 service units"
 
 # run app --------------------------------------------------------------------------
 
