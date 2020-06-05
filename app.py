@@ -38,6 +38,70 @@ CONTENT_STYLE = {
     "padding": "2rem 1rem",
 }
 
+# assert su_cost('std', 1, 14, 0, 32, 10) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
+
+# assert su_cost('std', 1, 7, 1, 128, 10) == 280.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
+
+# assert su_cost('gpu', 1, 1, 3, 16, 10) == 420.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
+
+
+readme_content = dcc.Markdown(
+"""
+
+# About the calculator
+
+* Input your requested parameters into the calculator as requested. To better approximate the price of a job, you should be familiar with the hardware specifications in Talapas (under Machine specifications below).
+
+* Clicking the `View` button once will show how time and frequency affects job cost. Click it again to close the window.
+
+* It is best not to change computing parameters while the graph is open because it will calculate a new matrix for every change in parameter.
+
+* It is not informative to put negative numbers into the app.
+
+# Example Calculations
+
+Premise: service units are rooted around the concept that when using the base compute node, 1 CPU = 1 Service Unit
+
+The idea here is that a job's usage effectively amounts to the largest fraction of resources utilized by the job on a node.  For instance, if a job uses all the available cores on a node but little memory then the job is using 100% of the node (i.e. there are no cores available for other jobs).  Likewise, if a job is only using one core but requires 100% of the memory on a node, that job is also using 100% of the node (there is insufficient memory for other jobs).
+
+The service unit formula is normalized to give 28 SUs for one hour, corresponding to the number of SUs consumed when using one standard node (28 Broadwell cores) for one hour.  However, when using a rarified resource, a multiplicative factor applies. This resource may be a more recent generation of node (e.g. Skylake CPU), a node with specialized hardware (e.g. a GPU), or a node with a particular function (large memory server). The multiplicative factors for node types (NTFs) are based broadly around the cost disparity between these resources and include factors such as core count, core performance, and memory, and may be adjusted over time as part of the core facility rate setting process. 
+
+* Example 1 (CPU driven SU): User A submits a job that is allocated 14 cores and 32 GB of RAM on one standard compute node.  Each compute node has a total of 28 cores and 128GB of RAM.  The job runs for 10 hours.  The job would have consumed 140 SU.
+
+* Example 2 (Memory driven SU): User B submits a job that is allocated 7 cores and 128GB of RAM and one GPU on a GPU node. Each GPU node has a total of 28 cores and 256GB of RAM and 4 GPUs.  The job runs for 10 hours. Then the job would have consumed 280 SU.
+
+* Example 3 (GPU driven SU): User C submits a job to the GPU partition and that job is allocated 1 core, 16GB of RAM, and 3 GPUs. The nodes in the GPU partition have 28 cpus, 256 GB of RAM, and 4 GPUs. This job runs for 10 hours and will have consumed 420 SU.
+
+* Example 4 (CPU driven SU on Fat nodes): User D submits a job to the fat partition that is allocated 42 of the 56 available cpus and 512GB of memory.  The job finishes in 10 hours and will have consumed 1260 SU.
+
+* Example 5 (Memory driven SU on Fat nodes): User E submits a job to the fat partition that is allocated 4 of the 56 available cpus and 2TB (2048GB) of memory.  The job finishes in 10 hours and will have consumed 3360 SU.
+
+* Example 6 (Multiple standard nodes): User F submits a job that is allocated 16 standard nodes (28 cores and 128 GB of RAM per node, totaling 448 cores and 2048GB of memory).  The job runs for 10 hours and will have consumed 4480 SU.
+
+# External resources for Talapas
+
+* [Quick start guide](https://hpcrcf.atlassian.net/wiki/spaces/TCP/pages/7312376/Quick+Start+Guide)
+
+* [Machine specifications](https://hpcrcf.atlassian.net/wiki/spaces/TCP/pages/6763193/Machine+Specifications)
+
+* [Service Unit Calculations](https://hpcrcf.atlassian.net/wiki/spaces/TCP/pages/647299079/Service+Unit+Calculation)
+
+* [Submit jobs with SLURM](https://hpcrcf.atlassian.net/wiki/spaces/TCP/pages/7286178/SLURM)
+""")
+
+readme_footer = dcc.Markdown(
+"""
+Application made by [Garth Kong](https://www.linkedin.com/in/garth-kong/), M.S.
+"""
+)
+
+readme_modal = dbc.Modal([
+    dbc.ModalHeader("UO Talapas Service Unit Calculator"),
+    dbc.ModalBody(readme_content),
+    dbc.ModalFooter(readme_footer),
+    ],id="output_modal", size="xl",
+)
+
 sidebar = html.Div(
     [
         html.H4("Compute Parameters"),
@@ -108,9 +172,9 @@ sidebar = html.Div(
             html.Hr(),
             dbc.Button(
                 "README",
-                id="link_readme",
-                color="primary",
-                href="https://www.google.com")
+                id="input_readme",
+                color="primary"),
+            readme_modal
             ],
             vertical=True, pills=True,
         ),
@@ -225,10 +289,20 @@ def su_cost(node_type, node_count, cpu, gpu, ram, duration):
     su = ( (node_count * (max_resource * node_factor)) * 28 * duration )
     return(su)
 
-
 # Service Units Equation = SUM over allocated nodes(max(AllocCPU/TotCPU, AllocRAM/TotRAM, AllocGRES/TotGRES) * NTF) * 28 Service Units/hour * job duration in hours
 
 # app callbacks -------------------------------------------------------------------
+
+# readme callback
+@app.callback(
+    Output("output_modal", "is_open"),
+    [Input("input_readme", "n_clicks")]
+)
+def readme(n_click):
+    if n_click == None:
+        return(False)
+    if (n_click % 2 == 1):
+        return(True)
 
 # determine SU requested
 
