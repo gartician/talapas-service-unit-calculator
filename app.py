@@ -40,24 +40,30 @@ CONTENT_STYLE = {
 
 readme_content = dcc.Markdown(
 """
+# How to use the Talapas cost calculator
 
-# About the calculator
-
-* Input your requested parameters into the calculator as requested. To better approximate the price of a job, you should be familiar with the hardware specifications in Talapas (under Machine specifications below).
-
-* Clicking the `View` button once will show how time and frequency affects job cost. Click it again to close the window.
-
-* It is best not to change computing parameters while the graph is open because it will calculate a new matrix for every change in parameter.
-
+* Input your requested parameters into the calculator as requested. To better approximate the price of a job, you should be familiar with the [hardware specifications of Talapas](https://hpcrcf.atlassian.net/wiki/spaces/TCP/pages/6763193/Machine+Specifications). Below is a guide per input field:
+  * `Type of node`: one of Standard, GPU, or High-Memory node, depending on your applications. 
+  * `Number of nodes`: number of functional units of Talapas (nodes) to reserve. 
+  * `Number of CPU(s)`: quantity of CPU cores to reserve PER NODE.
+  * `Number of GPU(s)`: quantity of GPU cores to reserve PER NODE.
+  * `Amount of RAM (GB)`: amount of RAM to reserve in gigabytes PER NODE.
+  * `Job duration (hours)`: how long your job will last in hours 
+  *  You can return your cost in units of dollars or Service Units.
+  * `View`: given a price of a job, predict future costs if you run that job multiple times OR predict cost of multiple multi-day jobs
+    * Note: clicking the `View` button once will show how time and number of jobs affects job cost. Click it again to close the graph and table.
+    * Note: It is best not to change computing parameters while the graph is open because it will calculate a new matrix for every change in parameter.
 * It is not informative to put negative numbers into the app.
 
 # Example Calculations
 
-Premise: service units are rooted around the concept that when using the base compute node, 1 CPU = 1 Service Unit
+Excerpt from [original talapas docs](https://hpcrcf.atlassian.net/wiki/spaces/TCP/pages/647299079/Service+Unit+Calculation): 
 
-The idea here is that a job's usage effectively amounts to the largest fraction of resources utilized by the job on a node.  For instance, if a job uses all the available cores on a node but little memory then the job is using 100% of the node (i.e. there are no cores available for other jobs).  Likewise, if a job is only using one core but requires 100% of the memory on a node, that job is also using 100% of the node (there is insufficient memory for other jobs).
+>  Premise: service units are rooted around the concept that when using the base compute node, 1 CPU = 1 Service Unit
 
-The service unit formula is normalized to give 28 SUs for one hour, corresponding to the number of SUs consumed when using one standard node (28 Broadwell cores) for one hour.  However, when using a rarified resource, a multiplicative factor applies. This resource may be a more recent generation of node (e.g. Skylake CPU), a node with specialized hardware (e.g. a GPU), or a node with a particular function (large memory server). The multiplicative factors for node types (NTFs) are based broadly around the cost disparity between these resources and include factors such as core count, core performance, and memory, and may be adjusted over time as part of the core facility rate setting process. 
+> The idea here is that a job's usage effectively amounts to the largest fraction of resources utilized by the job on a node.  For instance, if a job uses all the available cores on a node but little memory then the job is using 100% of the node (i.e. there are no cores available for other jobs).  Likewise, if a job is only using one core but requires 100% of the memory on a node, that job is also using 100% of the node (there is insufficient memory for other jobs).
+
+> The service unit formula is normalized to give 28 SUs for one hour, corresponding to the number of SUs consumed when using one standard node (28 Broadwell cores) for one hour.  However, when using a rarified resource, a multiplicative factor applies. This resource may be a more recent generation of node (e.g. Skylake CPU), a node with specialized hardware (e.g. a GPU), or a node with a particular function (large memory server). The multiplicative factors for node types (NTFs) are based broadly around the cost disparity between these resources and include factors such as core count, core performance, and memory, and may be adjusted over time as part of the core facility rate setting process. 
 
 * Example 1 (CPU driven SU): User A submits a job that is allocated 14 cores and 32 GB of RAM on one standard compute node.  Each compute node has a total of 28 cores and 128GB of RAM.  The job runs for 10 hours.  The job would have consumed 140 SU.
 
@@ -92,7 +98,7 @@ readme_modal = dbc.Modal([
     dbc.ModalHeader("UO Talapas Service Unit Calculator"),
     dbc.ModalBody(readme_content),
     dbc.ModalFooter(readme_footer),
-    ],id="output_readme", size="xl",
+    ],id="output_readme", size="xl", scrollable=True,
 )
 
 sidebar = html.Div(
