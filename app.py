@@ -5,6 +5,7 @@ import dash
 import itertools
 import dash_table
 import pandas as pd
+import dash_daq as daq
 import plotly.graph_objs as go
 import dash_core_components as dcc
 import dash_html_components as html
@@ -92,7 +93,7 @@ readme_modal = dbc.Modal([
     dbc.ModalHeader("UO Talapas Service Unit Calculator"),
     dbc.ModalBody(readme_content),
     dbc.ModalFooter(readme_footer),
-    ],id="output_modal", size="xl",
+    ],id="output_readme", size="xl",
 )
 
 sidebar = html.Div(
@@ -213,13 +214,9 @@ app.layout = html.Div([
             dcc.Loading(children=[
                 dash_table.DataTable(
                     id='output_table', 
-                    style_table = {"height": "75vh", "overflowX": "scroll", "overflowY": "auto"}, 
+                    style_table = {"width": "100%", "height": "75vh", "overflowY": "auto"}, 
                     style_as_list_view = True,
-                    style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'},
-                    style_cell_conditional = [
-                        {'if': {'column_id': 'Cost'}, 'width': "100%"},
-                        {'if': {'column_id': 'Total Number of Jobs'}, 'width': "100%"},
-                        {'if': {'column_id': 'Number of Days'}, 'width': "100%"}])
+                    style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'})
             ]),
             width={"size": 6, "offset": 4}
         )),
@@ -293,7 +290,7 @@ def su_cost(node_type, node_count, cpu, gpu, ram, duration):
 
 # readme callback
 @app.callback(
-    Output("output_modal", "is_open"),
+    Output("output_readme", "is_open"),
     [Input("input_readme", "n_clicks")]
 )
 def readme(n_click):
@@ -302,84 +299,7 @@ def readme(n_click):
     if (n_click % 2 == 1):
         return(True)
 
-# determine SU requested
-
-# we input all 6 run types of run information
-# @app.callback(
-#     [Output("output_su", 'children'),
-#     Output("output_su", "is_open"),
-#     Output("output_table", "data"),
-#     Output("output_table", "columns"),
-#     Output("output_graph", "figure")],
-#     [Input('node_type', 'value'),
-#     Input('node_count', 'value'),
-#     Input('input_cpu', 'value'),
-#     Input('input_gpu', 'value'),
-#     Input('input_ram', 'value'),
-#     Input('job_duration', 'value'),
-#     Input('input_units', 'value'), 
-#     Input('input_view', 'n_clicks')]
-# )
-# def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
-#     # do not return anything if no user input
-#     if node_type == None:
-#         table_data = [] # empty table
-#         table_columns = []
-#         fig = go.Figure(data=[go.Mesh3d(x=[],y=[],z=[])])
-#         return(None, False, table_data, table_columns, fig)
-#         pass
-#     # adjust NTF, total RAM, total CPU by node type
-#     if node_type == 'std':
-#         node_factor = 1
-#         tot_cpu = 28
-#         tot_ram = 128
-#     if node_type == 'gpu':
-#         node_factor = 2
-#         tot_cpu = 28
-#         tot_ram = 256
-#     if node_type == 'fat':
-#         node_factor = 6
-#         tot_cpu = 56
-#         tot_ram = 1024
-#     # job_setup = "current setup = {} node type + {} number of nodes + {} number of cpu # + {} number of ram + {} hrs duration of job + {} total cpu + {} total ram".format(node_type, node_count, cpu, ram, duration, tot_cpu, tot_ram)
-#     # calculate service units
-#     max_resource = top_resource(
-#         alloc_CPU = cpu, cpu_denominator = tot_cpu,
-#         alloc_GPU = gpu, gpu_denominator = 4,
-#         alloc_RAM = ram, ram_denominator = tot_ram)
-#     su = ( (node_count * (max_resource * node_factor)) * 28 * duration )
-#     # adjust output msg by units selected
-#     if units == "units_su":
-#         est_cost  = "estimated service units: {}".format(round(su, 2))
-#     if units == "units_dollars":
-#         est_cost = "estimated cost in dollars: ${}".format(round(su * su_dollar, 2))
-#     # plot the table upon odd button click (1, 3, 5, ...)
-#     if n_click == None or n_click % 2 == 0:
-#         table_data = [] # empty table
-#         table_columns = []
-#         fig = go.Figure(data=[go.Mesh3d(x=[],y=[],z=[])])
-#     elif (n_click % 2 == 1):
-#         # build the table. data and styling goes here! Format() is a lifesaver.
-#         tbl = cost_table(su, units = units)
-#         table_data = tbl.to_dict('records')
-#         table_columns = [{"name": i, "id": i, "type": "numeric", "format": Format(precision=4)} for i in tbl.columns]
-#         # build the graph. data and styling goes here!
-#         fig = go.Figure(
-#             data=[go.Mesh3d(z=tbl['Cost'], 
-#             x=tbl['Number of Days'], 
-#             y = tbl['Total Number of Jobs'], 
-#             opacity=1, 
-#             intensity=tbl['Cost'], 
-#             colorscale="Inferno")])
-#         fig.update_layout(
-#             title="Job cost over time and frequency",
-#             scene = dict(
-#             xaxis_title="Number of Days (X)",
-#             yaxis_title="Total Number of Jobs (Y)",
-#             zaxis_title="Cost (Z)"),
-#             width=1000, height=800)
-#     return(est_cost, True, table_data, table_columns, fig)
-
+# determine SU price requested
 @app.callback(
     [Output("output_su", 'children'),
     Output("output_su", "is_open"),
@@ -425,6 +345,7 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units):
         est_cost = "estimated cost in dollars: ${}".format(round(su * su_dollar, 2))
     return(est_cost, True, su)
 
+# retrieve the intermediate price and create frequency and time table+graph
 @app.callback(
     [Output("output_table", "data"),
     Output("output_table", "columns"),
