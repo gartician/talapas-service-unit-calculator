@@ -183,7 +183,7 @@ app.layout = html.Div([
     # title
     dbc.Row(
         dbc.Col(
-            html.H1("UO Talapas Service Unit Calculator", style={"white-space": "nowrap"}),
+            html.H1("UO Talapas Service Unit Calculator", style={"white-space": "nowrap", "text-align": "center"}),
         width={"size": 4, "offset": 4}
     )),
     # sidebar
@@ -194,7 +194,7 @@ app.layout = html.Div([
         dbc.Col(
             dbc.Alert(id = "output_su", children = [], color="success", style = {"text-align": "center"}, is_open = False),
         width={"size": 5, "offset": 4}
-        )
+        ), align="center",
     ),
 
     # graph cost over time
@@ -202,10 +202,11 @@ app.layout = html.Div([
         dbc.Col(
             dcc.Loading(
                 children = [
-                dcc.Graph(id='output_graph', style={"width": "100%", "height": "75vh"})],
+                dcc.Graph(id='output_graph', style={"width": "100%", "height": "100vh"})],
             ),
         width={"size": 6, "offset": 4}
-    )),
+    ), align="center",
+    ),
 
     # table of cost over time
     dbc.Row(
@@ -218,7 +219,8 @@ app.layout = html.Div([
                     style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'})
             ]),
             width={"size": 6, "offset": 4}
-        )),
+        ), align="center",
+    ),
 
     # cached information - cost of job
     html.Div(id='intermediate_cost', style={'display': 'none'})
@@ -373,7 +375,7 @@ def table_graph(price, units, n_click):
             intensity=tbl['Cost'], 
             colorscale="Inferno")])
         fig.update_layout(
-            title="Job cost over time and frequency",
+            title="Job cost over time and number of jobs",
             scene = dict(
             xaxis_title="Number of Days (X)",
             yaxis_title="Total Number of Jobs (Y)",
