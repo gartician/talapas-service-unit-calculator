@@ -38,13 +38,6 @@ CONTENT_STYLE = {
     "padding": "2rem 1rem",
 }
 
-# assert su_cost('std', 1, 14, 0, 32, 10) == 140.0, "1 standard node using 14 cores and 28 GB RAM for 10 hrs does not equal 140 service units"
-
-# assert su_cost('std', 1, 7, 1, 128, 10) == 280.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
-
-# assert su_cost('gpu', 1, 1, 3, 16, 10) == 420.0, "1 standard node using 7 cores and 128 GB RAM for 10 hrs does not equal 280 service units" # accommodate one gpu core
-
-
 readme_content = dcc.Markdown(
 """
 
@@ -154,7 +147,8 @@ sidebar = html.Div(
                     id="job_duration",
                     value=2.5,
                     type="number",
-                    debounce=True)]),
+                    debounce=True,
+                    step=0.5)]),
             dbc.Label("Return results in units of SU or dollars."),
             dbc.RadioItems(
                 id="input_units",
@@ -166,7 +160,7 @@ sidebar = html.Div(
             html.Hr(),
             dbc.Label("View effects of frequency and time"),
             dbc.Button(
-                "View (wait 10 seconds)",
+                "View",
                 id="input_view",
                 color = "primary"),
             html.Hr(),
@@ -186,14 +180,11 @@ content = html.Div(id="page-content", style=CONTENT_STYLE)
 
 # app layout ----------------------------------------------------------------------
 app.layout = html.Div([
-    # app pages
-    dcc.Location(id='url', refresh=False),
-    dcc.Link('Navigate to home', href='/'),
     # title
     dbc.Row(
         dbc.Col(
             html.H1("UO Talapas Service Unit Calculator", style={"white-space": "nowrap"}),
-            width={"size": 4, "offset": 4}
+        width={"size": 4, "offset": 4}
     )),
     # sidebar
     sidebar, content,
@@ -202,32 +193,39 @@ app.layout = html.Div([
     dbc.Row(
         dbc.Col(
             dbc.Alert(id = "output_su", children = [], color="success", style = {"text-align": "center"}, is_open = False),
-            width={"size": 5, "offset": 4}
+        width={"size": 5, "offset": 4}
         )
     ),
 
     # graph cost over time
     dbc.Row(
         dbc.Col(
-            # dcc.Loading(id = 'loading_graph',children = [html.Div(dcc.Graph(id='output_graph'))], type = "default"),
-            dcc.Graph(id='output_graph'),
-            width={"offset": 3}
+            dcc.Loading(
+                children = [
+                dcc.Graph(id='output_graph', style={"width": "100%", "height": "75vh"})],
+            ),
+        width={"size": 6, "offset": 4}
     )),
 
     # table of cost over time
     dbc.Row(
         dbc.Col(
-            dash_table.DataTable(
-                id='output_table', 
-                style_table = {"height": 500, "overflowX": "scroll", "overflowY": "auto", "width": 900}, 
-                style_as_list_view = True,
-                style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'},
-                style_cell_conditional = [
-                    {'if': {'column_id': 'Cost'}, 'width': 300},
-                    {'if': {'column_id': 'Total Number of Jobs'}, 'width': 300},
-                    {'if': {'column_id': 'Number of Days'}, 'width': 300}]),
+            dcc.Loading(children=[
+                dash_table.DataTable(
+                    id='output_table', 
+                    style_table = {"height": "75vh", "overflowX": "scroll", "overflowY": "auto"}, 
+                    style_as_list_view = True,
+                    style_header = {'backgroundColor': 'white', 'fontWeight': 'bold'},
+                    style_cell_conditional = [
+                        {'if': {'column_id': 'Cost'}, 'width': "100%"},
+                        {'if': {'column_id': 'Total Number of Jobs'}, 'width': "100%"},
+                        {'if': {'column_id': 'Number of Days'}, 'width': "100%"}])
+            ]),
             width={"size": 6, "offset": 4}
-        ))
+        )),
+
+    # cached information - cost of job
+    html.Div(id='intermediate_cost', style={'display': 'none'})
     ]
 )
 
@@ -307,30 +305,100 @@ def readme(n_click):
 # determine SU requested
 
 # we input all 6 run types of run information
-# we output 2 things: calculated SU and True that toggles dbc.Alert() to show up when all fields are selected.
+# @app.callback(
+#     [Output("output_su", 'children'),
+#     Output("output_su", "is_open"),
+#     Output("output_table", "data"),
+#     Output("output_table", "columns"),
+#     Output("output_graph", "figure")],
+#     [Input('node_type', 'value'),
+#     Input('node_count', 'value'),
+#     Input('input_cpu', 'value'),
+#     Input('input_gpu', 'value'),
+#     Input('input_ram', 'value'),
+#     Input('job_duration', 'value'),
+#     Input('input_units', 'value'), 
+#     Input('input_view', 'n_clicks')]
+# )
+# def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
+#     # do not return anything if no user input
+#     if node_type == None:
+#         table_data = [] # empty table
+#         table_columns = []
+#         fig = go.Figure(data=[go.Mesh3d(x=[],y=[],z=[])])
+#         return(None, False, table_data, table_columns, fig)
+#         pass
+#     # adjust NTF, total RAM, total CPU by node type
+#     if node_type == 'std':
+#         node_factor = 1
+#         tot_cpu = 28
+#         tot_ram = 128
+#     if node_type == 'gpu':
+#         node_factor = 2
+#         tot_cpu = 28
+#         tot_ram = 256
+#     if node_type == 'fat':
+#         node_factor = 6
+#         tot_cpu = 56
+#         tot_ram = 1024
+#     # job_setup = "current setup = {} node type + {} number of nodes + {} number of cpu # + {} number of ram + {} hrs duration of job + {} total cpu + {} total ram".format(node_type, node_count, cpu, ram, duration, tot_cpu, tot_ram)
+#     # calculate service units
+#     max_resource = top_resource(
+#         alloc_CPU = cpu, cpu_denominator = tot_cpu,
+#         alloc_GPU = gpu, gpu_denominator = 4,
+#         alloc_RAM = ram, ram_denominator = tot_ram)
+#     su = ( (node_count * (max_resource * node_factor)) * 28 * duration )
+#     # adjust output msg by units selected
+#     if units == "units_su":
+#         est_cost  = "estimated service units: {}".format(round(su, 2))
+#     if units == "units_dollars":
+#         est_cost = "estimated cost in dollars: ${}".format(round(su * su_dollar, 2))
+#     # plot the table upon odd button click (1, 3, 5, ...)
+#     if n_click == None or n_click % 2 == 0:
+#         table_data = [] # empty table
+#         table_columns = []
+#         fig = go.Figure(data=[go.Mesh3d(x=[],y=[],z=[])])
+#     elif (n_click % 2 == 1):
+#         # build the table. data and styling goes here! Format() is a lifesaver.
+#         tbl = cost_table(su, units = units)
+#         table_data = tbl.to_dict('records')
+#         table_columns = [{"name": i, "id": i, "type": "numeric", "format": Format(precision=4)} for i in tbl.columns]
+#         # build the graph. data and styling goes here!
+#         fig = go.Figure(
+#             data=[go.Mesh3d(z=tbl['Cost'], 
+#             x=tbl['Number of Days'], 
+#             y = tbl['Total Number of Jobs'], 
+#             opacity=1, 
+#             intensity=tbl['Cost'], 
+#             colorscale="Inferno")])
+#         fig.update_layout(
+#             title="Job cost over time and frequency",
+#             scene = dict(
+#             xaxis_title="Number of Days (X)",
+#             yaxis_title="Total Number of Jobs (Y)",
+#             zaxis_title="Cost (Z)"),
+#             width=1000, height=800)
+#     return(est_cost, True, table_data, table_columns, fig)
 
 @app.callback(
     [Output("output_su", 'children'),
     Output("output_su", "is_open"),
-    Output("output_table", "data"),
-    Output("output_table", "columns"),
-    Output("output_graph", "figure")],
+    Output("intermediate_cost", "children")],
     [Input('node_type', 'value'),
     Input('node_count', 'value'),
     Input('input_cpu', 'value'),
     Input('input_gpu', 'value'),
     Input('input_ram', 'value'),
     Input('job_duration', 'value'),
-    Input('input_units', 'value'), 
-    Input('input_view', 'n_clicks')]
+    Input('input_units', 'value')], 
 )
-def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
-    # do not return anything if no user input
+def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units):
+     # do not return anything if no user input
     if node_type == None:
         table_data = [] # empty table
         table_columns = []
         fig = go.Figure(data=[go.Mesh3d(x=[],y=[],z=[])])
-        return(None, False, table_data, table_columns, fig)
+        return(None, False, None)
         pass
     # adjust NTF, total RAM, total CPU by node type
     if node_type == 'std':
@@ -345,8 +413,6 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
         node_factor = 6
         tot_cpu = 56
         tot_ram = 1024
-    # job_setup = "current setup = {} node type + {} number of nodes + {} number of cpu # + {} number of ram + {} hrs duration of job + {} total cpu + {} total ram".format(node_type, node_count, cpu, ram, duration, tot_cpu, tot_ram)
-    # calculate service units
     max_resource = top_resource(
         alloc_CPU = cpu, cpu_denominator = tot_cpu,
         alloc_GPU = gpu, gpu_denominator = 4,
@@ -357,14 +423,25 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
         est_cost  = "estimated service units: {}".format(round(su, 2))
     if units == "units_dollars":
         est_cost = "estimated cost in dollars: ${}".format(round(su * su_dollar, 2))
-    # plot the table upon odd button click (1, 3, 5, ...)
+    return(est_cost, True, su)
+
+@app.callback(
+    [Output("output_table", "data"),
+    Output("output_table", "columns"),
+    Output("output_graph", "figure")],
+    [Input('intermediate_cost', 'children'),
+    Input('input_units', 'value'),
+    Input('input_view', 'n_clicks')]
+)
+def table_graph(price, units, n_click):
     if n_click == None or n_click % 2 == 0:
         table_data = [] # empty table
         table_columns = []
         fig = go.Figure(data=[go.Mesh3d(x=[],y=[],z=[])])
+        return(table_data, table_columns, fig)
     elif (n_click % 2 == 1):
         # build the table. data and styling goes here! Format() is a lifesaver.
-        tbl = cost_table(su, units = units)
+        tbl = cost_table(price, units = units)
         table_data = tbl.to_dict('records')
         table_columns = [{"name": i, "id": i, "type": "numeric", "format": Format(precision=4)} for i in tbl.columns]
         # build the graph. data and styling goes here!
@@ -380,9 +457,8 @@ def calc_cost(node_type, node_count, cpu, gpu, ram, duration, units, n_click):
             scene = dict(
             xaxis_title="Number of Days (X)",
             yaxis_title="Total Number of Jobs (Y)",
-            zaxis_title="Cost (Z)"),
-            width=1000, height=800)
-    return(est_cost, True, table_data, table_columns, fig)
+            zaxis_title="Cost (Z)"))
+    return(table_data, table_columns, fig)
 
 # if you want an empty table, just return an empty list [] for output table's (data and columns) component id.
 
