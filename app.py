@@ -1,16 +1,9 @@
-import os
-import sys
-import re
-import dash
+from dash import dash, dash_table, dcc, html, Input, Output
+import dash_bootstrap_components as dbc
+from dash.dash_table.Format import Format
 import itertools
-import dash_table
 import pandas as pd
 import plotly.graph_objs as go
-import dash_core_components as dcc
-import dash_html_components as html
-import dash_bootstrap_components as dbc
-from dash.dependencies import Input, Output
-from dash_table.Format import Format, Scheme, Sign, Symbol
 
 # Initiate the app ----------------------------------------------------------------
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
@@ -106,7 +99,7 @@ sidebar = html.Div(
         html.H4("Compute Parameters"),
         html.Hr(),
         dbc.Nav([
-            dbc.FormGroup([
+            dbc.InputGroup([
                 dbc.Label("Select type of node"),
                 dbc.Select(
                     id="node_type",
@@ -115,7 +108,7 @@ sidebar = html.Div(
                         {'label': 'GPU', 'value': 'gpu'},
                         {'label': 'High-Memory', 'value': 'fat'}
                         ])]),
-            dbc.FormGroup([
+            dbc.InputGroup([
                 dbc.Label("Number of nodes"),
                 dbc.Input(
                     id="node_count",
@@ -123,7 +116,7 @@ sidebar = html.Div(
                     type="number",
                     debounce=True,
                     min=0)]),
-            dbc.FormGroup([
+            dbc.InputGroup([
                 dbc.Label("Number of CPU(s)"),
                 dbc.Input(
                     id="input_cpu",
@@ -131,7 +124,7 @@ sidebar = html.Div(
                     type="number",
                     debounce=True,
                     min=0)]),
-            dbc.FormGroup([
+            dbc.InputGroup([
                 dbc.Label("Number of GPU(s)"),
                 dbc.Input(
                     id="input_gpu",
@@ -139,7 +132,7 @@ sidebar = html.Div(
                     type="number",
                     debounce=True,
                     min=0)]),
-            dbc.FormGroup([
+            dbc.InputGroup([
                 dbc.Label("Amount of RAM (GB)"),
                 dbc.Input(
                     id="input_ram",
@@ -147,7 +140,7 @@ sidebar = html.Div(
                     type="number",
                     debounce=True,
                     min=0)]),
-            dbc.FormGroup([
+            dbc.InputGroup([
                 dbc.Label("Job duration (hours)"),
                 dbc.Input(
                     id="job_duration",
